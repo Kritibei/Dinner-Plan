@@ -24,7 +24,7 @@ def authenticate_user(email, password):
         return c.fetchone()
 
 # Groq client initialization
-groq_client = Groq(api_key="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")
+groq_client = Groq(api_key=os.getenv("api_key"))
 
 # Bio generation function using Groq API
 def generate_bio(career, personality, interest, relationship_goal, name, template, emoji, social_links):
