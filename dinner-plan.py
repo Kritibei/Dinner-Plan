@@ -1,12 +1,37 @@
+import os
 import streamlit as st
 import random
 import sqlite3
-from groq import Groq
+import requests
+import json
 
-# Initialize Groq client
-groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+def query_groq_api(text, concise=False):
+    api_key = st.secrets["GROQ_API_KEY"]
+    endpoint = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json'
+    }
+    
+    payload = {
+        "messages": [
+           
+            {
+                "role": "user",
+                "content": text
+            }
+        ],
+        "model": "llama3-8b-8192"
+    }
 
-# SQLite setup for user management
+    try:
+        response = requests.post(endpoint, headers=headers, data=json.dumps(payload))
+        response.raise_for_status()
+        return response.json()['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        st.error(f"Error querying Groq API: {str(e)}")
+        return None
+
 def create_user(email, password):
     with sqlite3.connect('users.db') as conn:
         c = conn.cursor()
@@ -30,13 +55,7 @@ def generate_bio(career, personality, interest, relationship_goal, name, templat
             "Make it suitable for use on social platforms or introductions."
         )
 
-        chat_completion = groq_client.chat.completions.create(
-            messages=[{"role": "user", "content": query}],
-            model="llama3-8b-8192",
-            stream=False,
-        )
-
-        bio = chat_completion.choices[0].message.content.strip()
+        bio = query_groq_api(query)
 
         if template == "short":
             bio = bio.split('.')[0]  # Get the first sentence for short bio
