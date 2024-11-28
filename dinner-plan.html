@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DinnerTonight Bio Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .card {
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .form-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+        }
+        .form-select {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            background-color: white;
+        }
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-weight: 600;
+            text-align: center;
+            transition: background-color 0.2s;
+        }
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        .btn-secondary {
+            background-color: #f97316;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #ea580c;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+    <div class="card w-full max-w-2xl p-6">
+        <h1 class="text-2xl font-bold text-center mb-6">DinnerTonight Bio Generator</h1>
+        
+        <form id="bioForm" class="space-y-4">
+            <div class="space-y-2">
+                <label for="name" class="block font-medium">Enter Your Name:</label>
+                <input type="text" id="name" class="form-input" required>
+            </div>
+
+            <div class="space-y-2">
+                <label for="career" class="block font-medium">Select Career:</label>
+                <select id="career" class="form-select">
+                    <option value="Software Engineer">Software Engineer</option>
+                    <option value="Artist">Artist</option>
+                    <option value="Chef">Chef</option>
+                    <option value="Teacher">Teacher</option>
+                    <option value="Musician">Musician</option>
+                </select>
+            </div>
+
+            <div class="space-y-2">
+                <label for="personality" class="block font-medium">Select Personality:</label>
+                <select id="personality" class="form-select">
+                    <option value="Adventurous">Adventurous</option>
+                    <option value="Creative">Creative</option>
+                    <option value="Compassionate">Compassionate</option>
+                    <option value="Introverted">Introverted</option>
+                </select>
+            </div>
+
+            <div class="space-y-2">
+                <label for="interest" class="block font-medium">Select Interest:</label>
+                <select id="interest" class="form-select">
+                    <option value="Cooking">Cooking</option>
+                    <option value="Traveling">Traveling</option>
+                    <option value="Music">Music</option>
+                    <option value="Literature">Literature</option>
+                    <option value="Gaming">Gaming</option>
+                </select>
+            </div>
+
+            <div class="space-y-2">
+                <label for="relationship_goal" class="block font-medium">Select Relationship Goal:</label>
+                <select id="relationship_goal" class="form-select">
+                    <option value="Casual">Casual</option>
+                    <option value="Long-term">Long-term</option>
+                    <option value="Adventurous">Adventurous</option>
+                </select>
+            </div>
+
+            <div class="space-y-2">
+                <label for="template" class="block font-medium">Select Bio Template:</label>
+                <select id="template" class="form-select">
+                    <option value="short">Short</option>
+                    <option value="detailed">Detailed</option>
+                </select>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <label class="form-switch">
+                    <input type="checkbox" id="emoji">
+                    <span class="form-switch-slider"></span>
+                </label>
+                <span class="font-medium">Include Emoji</span>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <label class="form-switch">
+                    <input type="checkbox" id="social_links">
+                    <span class="form-switch-slider"></span>
+                </label>
+                <span class="font-medium">Include Social Links</span>
+            </div>
+            
+
+            <button type="submit" class="btn btn-primary w-full">Generate Bio</button>
+        </form>
+
+        <div id="bioResult" class="mt-6 p-4 bg-gray-100 rounded-md hidden">
+            <h2 class="text-lg font-semibold mb-2">Generated Bio:</h2>
+            <p id="bioText" class="text-gray-700"></p>
+        </div>
+
+        <button id="randomBioBtn" class="btn btn-secondary w-full mt-4">Get Random Bio</button>
+    </div>
+
+    <script>
+        document.getElementById('bioForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('name').value;
+            const career = document.getElementById('career').value;
+            const personality = document.getElementById('personality').value;
+            const interest = document.getElementById('interest').value;
+            const relationship_goal = document.getElementById('relationship_goal').value;
+            const template = document.getElementById('template').value;
+            const emoji = document.getElementById('emoji').checked;
+            const social_links = document.getElementById('social_links').checked;
+
+            fetch('http://127.0.0.1:5000/generate_bio', {
+                method: 'POST',
+                body: new URLSearchParams({
+                    name, career, personality, interest, relationship_goal, template, emoji, social_links
+                }),
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('bioResult').classList.remove('hidden');
+                document.getElementById('bioText').innerText = data.bio;
+            });
+        });
+
+        document.getElementById('randomBioBtn').addEventListener('click', function() {
+            fetch('/random_bio')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('bioResult').classList.remove('hidden');
+                    document.getElementById('bioText').innerText = data.bio;
+                });
+        });
+    </script>
+</body>
+</html>
