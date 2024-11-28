@@ -1,15 +1,12 @@
-import os
-import sqlite3
-from flask import Flask, request, jsonify, render_template
+import streamlit as st
 import random
+import sqlite3
 from groq import Groq
-from flask_cors import CORS
 
-app = Flask(__name__)
-# Allow all origins for development
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Initialize Groq client
+groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-# SQLite setup (for user management)
+# SQLite setup for user management
 def create_user(email, password):
     with sqlite3.connect('users.db') as conn:
         c = conn.cursor()
@@ -23,13 +20,8 @@ def authenticate_user(email, password):
         c.execute('SELECT * FROM users WHERE email=? AND password=?', (email, password))
         return c.fetchone()
 
-# Groq client initialization
-groq_client = Groq(api_key=os.getenv("api_key"))
-
-# Bio generation function using Groq API
 def generate_bio(career, personality, interest, relationship_goal, name, template, emoji, social_links):
     try:
-        # Format the query for generating a personalized bio
         query = (
             f"Generate a personalized bio for a user based on the following details: "
             f"Career: {career}, Personality: {personality}, Interests: {interest}, "
@@ -37,101 +29,121 @@ def generate_bio(career, personality, interest, relationship_goal, name, templat
             "The bio should be engaging, relevant, and reflect the user's preferences. "
             "Make it suitable for use on social platforms or introductions."
         )
-        
-        # Call the Groq API
+
         chat_completion = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": query}],
             model="llama3-8b-8192",
             stream=False,
         )
-        
-        # Extract the bio from the response
+
         bio = chat_completion.choices[0].message.content.strip()
-        
-        # Apply the selected template (short/detailed)
+
         if template == "short":
             bio = bio.split('.')[0]  # Get the first sentence for short bio
-        
-        # Add emojis or social links if selected
+
         if emoji:
             bio += " 🎉"
         if social_links:
             bio += f"\nFollow {name} on Instagram: [@username](https://instagram.com/username)"
-        
+
         return bio
     except Exception as e:
         return f"Error generating bio: {str(e)}"
 
+def main():
+    st.set_page_config(page_title="DinnerTonight Bio Generator", page_icon="🍽️")
+    
+    st.title("DinnerTonight Bio Generator")
 
-# Route to render the main page
-@app.route('/')
-def index():
-    return render_template('index.html')
+    # Sidebar for navigation
+    menu = ["Bio Generator", "Login", "Signup"]
+    choice = st.sidebar.selectbox("Menu", menu)
 
-# Route to generate bio based on form inputs
-@app.route('/generate_bio', methods=['POST'])
-def generate_bio_route():
-    try:
-        data = request.form
-        bio = generate_bio(
-            data['career'],
-            data['personality'],
-            data['interest'],
-            data['relationship_goal'],
-            data['name'],
-            data['template'],
-            'emoji' in data,
-            'social_links' in data
-        )
-        return jsonify({'bio': bio})
-    except KeyError as e:
-        return jsonify({'error': f"Missing field: {str(e)}"}), 400
+    if choice == "Bio Generator":
+        st.header("Generate Your Perfect Bio")
 
-# Route for user signup
-@app.route('/signup', methods=['POST'])
-def signup():
-    data = request.form
-    create_user(data['email'], data['password'])
-    return jsonify({'message': 'Signup successful!'})
+        # Collect user inputs
+        name = st.text_input("Enter Your Name", key="name")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            career = st.selectbox("Select Career", 
+                ["Software Engineer", "Artist", "Chef", "Teacher", "Musician"])
+            
+            personality = st.selectbox("Select Personality", 
+                ["Adventurous", "Creative", "Compassionate", "Introverted"])
+        
+        with col2:
+            interest = st.selectbox("Select Interest", 
+                ["Cooking", "Traveling", "Music", "Literature", "Gaming"])
+            
+            relationship_goal = st.selectbox("Select Relationship Goal", 
+                ["Casual", "Long-term", "Adventurous"])
 
-# Route for user login
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.form
-    user = authenticate_user(data['email'], data['password'])
-    if user:
-        return jsonify({'message': 'Login successful!'})
-    else:
-        return jsonify({'message': 'Invalid credentials'}), 400
+        template = st.radio("Bio Template", ["short", "detailed"])
+        
+        col3, col4 = st.columns(2)
+        
+        with col3:
+            emoji = st.checkbox("Include Emoji")
+        
+        with col4:
+            social_links = st.checkbox("Include Social Links")
 
-# Route to handle rating
-@app.route('/rate_bio', methods=['POST'])
-def rate_bio():
-    data = request.get_json()
-    rating = data.get('rating')
-    if rating is None:
-        return jsonify({'error': 'Rating is required'}), 400
-    return jsonify({'message': 'Rating received'})
+        if st.button("Generate Bio"):
+            if name:
+                bio = generate_bio(career, personality, interest, 
+                                   relationship_goal, name, template, emoji, social_links)
+                st.success("Bio Generated!")
+                st.write(bio)
+            else:
+                st.warning("Please enter your name!")
 
-# Route for random bio suggestion
-@app.route('/random_bio', methods=['GET'])
-def random_bio_route():
-    careers = ['Software Engineer', 'Artist', 'Chef', 'Teacher', 'Musician']
-    personalities = ['Adventurous', 'Creative', 'Compassionate', 'Introverted']
-    interests = ['Cooking', 'Traveling', 'Music', 'Literature', 'Gaming']
-    relationship_goals = ['Casual', 'Long-term', 'Adventurous']
+        # Random Bio Generation
+        if st.button("Get Random Bio"):
+            careers = ['Software Engineer', 'Artist', 'Chef', 'Teacher', 'Musician']
+            personalities = ['Adventurous', 'Creative', 'Compassionate', 'Introverted']
+            interests = ['Cooking', 'Traveling', 'Music', 'Literature', 'Gaming']
+            relationship_goals = ['Casual', 'Long-term', 'Adventurous']
 
-    random_bio = generate_bio(
-        random.choice(careers),
-        random.choice(personalities),
-        random.choice(interests),
-        random.choice(relationship_goals),
-        'User',
-        'short',
-        emoji=False,
-        social_links=False
-    )
-    return jsonify({'bio': random_bio})
+            random_bio = generate_bio(
+                random.choice(careers),
+                random.choice(personalities),
+                random.choice(interests),
+                random.choice(relationship_goals),
+                'User',
+                'short',
+                emoji=False,
+                social_links=False
+            )
+            st.success("Random Bio Generated!")
+            st.write(random_bio)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    elif choice == "Login":
+        st.header("Login")
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+        
+        if st.button("Login"):
+            user = authenticate_user(email, password)
+            if user:
+                st.success("Login Successful!")
+            else:
+                st.error("Invalid Credentials")
+
+    elif choice == "Signup":
+        st.header("Create an Account")
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+        confirm_password = st.text_input("Confirm Password", type="password")
+        
+        if st.button("Signup"):
+            if password == confirm_password:
+                create_user(email, password)
+                st.success("Account Created Successfully!")
+            else:
+                st.error("Passwords Do Not Match")
+
+if __name__ == "__main__":
+    main()
